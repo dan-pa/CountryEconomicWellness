@@ -1,0 +1,155 @@
+---
+title: "Empirical Analysis of Economic Wellness"
+author: "Daniel Park"
+output:
+  html_document: default
+---
+
+### Introduction
+
+If you ever check the news from time to time, there's always talk of whether the economy is doing good or bad, whether the government should be focusing on so-and-so social issue or the government should implement such-and-such policy to improve the economy of their country. Most people will have a different response when prompted about how the economy can improve. 
+
+While there may be a more theoretical explanation made by economists on which factors contribute the most to the well-being of an economy, it's always nice to look at the situation from more of an empirical lens as even economists often disagree on this broad question. This report will try to answer which factors contribute to the economic well-being of a country the most. 
+
+The data set that I will be using for this project is the `AllCountries` data set from the `Lock5Data` package. This data set contains information about 217 countries with 26 variables representing characteristics of each country. Obviously, defining a well-being of an economy is a very complicated thing to do, so for the sake of simplicity and due to the limitations of this data set, I will be using `GDP` (GDP per capita in USD) as a measure of how well the economy is doing. 
+
+### Data Exploration
+
+First, we need to access the data set, and this could be done by installing the `Lock5Data` package and storing the `AllCountries` data set into the variable `countries`. We also need to access the `ggplot2` library to be able to visualize our data and plots. 
+
+```{r}
+#install.packages("Lock5Data", dependencies = TRUE)
+library(Lock5Data)
+library(ggplot2)
+countries <- AllCountries
+```
+
+Now, we can start comparing `GDP` to other values available in the data set by plotting a scatter plot with `GDP` as the y-axis and the other factors as the x-axis. For example, here is what a plot would look like if we were to plot `GDP` versus `CO2`.
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(countries, aes(CO2, GDP)) + geom_point()
+```
+
+It would be a bit difficult to qualitatively judge multiple plots and equally ridiculous to put them all in this report, especially if the plots don't tell us anything meaningful. A potential alternative is to cherry-pick, which graphs to use by looking at their $R^2$ values.
+
+```{r}
+cat('LandArea',summary(lm(GDP ~ LandArea, data = countries))$r.squared,"\n")
+cat('Population',summary(lm(GDP ~ Population, data = countries))$r.squared,"\n")
+cat('Density',summary(lm(GDP ~ Density, data = countries))$r.squared,"\n")
+cat('Rural',summary(lm(GDP ~ Rural, data = countries))$r.squared,"\n")
+cat('CO2',summary(lm(GDP ~ CO2, data = countries))$r.squared,"\n")
+cat('PumpPrice',summary(lm(GDP ~ PumpPrice, data = countries))$r.squared,"\n")
+cat('Military',summary(lm(GDP ~ Military, data = countries))$r.squared,"\n")
+cat('Health',summary(lm(GDP ~ Health, data = countries))$r.squared,"\n")
+cat('ArmedForces',summary(lm(GDP ~ ArmedForces, data = countries))$r.squared,"\n")
+cat('Internet',summary(lm(GDP ~ Internet, data = countries))$r.squared,"\n")
+cat('Cell',summary(lm(GDP ~ Cell, data = countries))$r.squared,"\n")
+cat('HIV',summary(lm(GDP ~ HIV, data = countries))$r.squared,"\n")
+cat('Hunger',summary(lm(GDP ~ Hunger, data = countries))$r.squared,"\n")
+cat('Diabetes',summary(lm(GDP ~ Diabetes, data = countries))$r.squared,"\n")
+cat('BirthRate',summary(lm(GDP ~ BirthRate, data = countries))$r.squared,"\n")
+cat('DeathRate',summary(lm(GDP ~ DeathRate, data = countries))$r.squared,"\n")
+cat('ElderlyPop',summary(lm(GDP ~ ElderlyPop, data = countries))$r.squared,"\n")
+cat('LifeExpectancy',summary(lm(GDP ~ LifeExpectancy, data = countries))$r.squared,"\n")
+cat('FemaleLabor',summary(lm(GDP ~ FemaleLabor, data = countries))$r.squared,"\n")
+cat('Unemployment',summary(lm(GDP ~ Unemployment, data = countries))$r.squared,"\n")
+cat('Energy',summary(lm(GDP ~ Energy, data = countries))$r.squared,"\n")
+cat('Electricity',summary(lm(GDP ~ Electricity, data = countries))$r.squared,"\n")
+cat('Developed',summary(lm(GDP ~ Developed, data = countries))$r.squared,"\n")
+```
+
+With this helpful chart, we can determine which factors are strongly correlated to `GDP` (or how well the economy is doing, according to our assumptions) compared to the other factors. For example, `Diabetes` seems to be the most weakly correlated with an $R^2$ value of around 0.0003. Here is what the plot would look like with the least square regression line. 
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(countries, aes(Diabetes, GDP)) + geom_point() + 
+  geom_smooth(aes(Diabetes, GDP), method = "lm", se = FALSE)
+```
+
+From this simple analysis of the $R^2$ values, we find that `Internet` and `Electricity` had values of around 0.5, which turned out to be our highest $R^2$ values. (We'll be excluding an analysis of `Developed`, which had the highest $R^2$ value among the 27 factors included in this data set as it seems redundant to say "the development of a country is a strong indicator of how well an economy is doing.")
+
+Here are the two plots that showed the strongest correlation with `GDP` with their respective lines of best fit. 
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(countries, aes(Internet, GDP)) + geom_point() + 
+  geom_smooth(aes(Internet, GDP), method = "lm", se = FALSE)
+
+ggplot(countries, aes(Electricity, GDP)) + geom_point() + 
+  geom_smooth(aes(Electricity, GDP), method = "lm", se = FALSE)
+```
+
+To summarize, it turns out that of the 22 measurable factors, 14 of them have an $R^2$ value above 0.1, 10 of them have a value above 0.2, 8 of them have a value above 0.3, and 4 of them have a value of around 0.4 or greater. For the model, we will only use the 8 that have an $R^2$ value of above 0.3 since our goal is to spot some of the stronger factors found using our data set. But the fact that almost two-thirds of our measurable data is somewhat correlated to the economy goes to show how complex the issue really is of finding what the best factors are in determining the well-being of an economy. 
+
+#### Sidenotes
+
+Before we move on to construct the model, I want to discuss some interesting I have noticed in the $R^2$ values. First, I would like to note that, contrary to what I thought, the correlation between `GDP` versus `BirthRate` and the correlation between `GDP` and `DeathRate` are drastically different. It turns out that factors concerning age are strongly correlated with the economies' well-being with `ElderlyPop` and `LifeExpectancy` being among the highest $R^2$ values. `BirthRate` has a similarly strong correlation of 0.31, but surprisingly, `DeathRate` has a comparatively much weaker correlation of 0.0038.
+
+Another thing I wanted to note was how weakly correlated `Unemployment` was to `GDP` with an $R^2$ value of only 0.027. One would think that a high unemployment rate will lead to a struggling economy (and it is most likely true!), but it is simply not reflected in the data set. Perhaps if the data set were to analyze one country and its economic history compared  to its historic unemployment rates, it might paint a different picture. 
+
+Finally, I wanted to note something that may not be as surprising but is still worth noting, nonetheless. Military spending and personnel seem to have very weak $R^2$ values with `Military` and `ArmedForces` with 0.33 and 0.0011, respectively. A famous outlier of this fact is the United States, which spends a lot of money on its military infrastructure. Since the outlier is so prominent, it could be a reason why some might question this part of the data. 
+
+#### Model Construction
+
+The highest $R^2$ values in this data set when compared to `GDP` are, in order of strongest to weakest, `Internet`, `Electricity`, `LifeExpectancy`, `Energy`, `Rural`, `ElderlyPop`, `BirthRate`, and `CO2`. A multidimensional model can be constructed with all these variables. 
+
+```{r}
+summary(lm(GDP ~ Internet + Electricity + LifeExpectancy + Energy + Rural + ElderlyPop + BirthRate + CO2, data = countries))$coefficients
+```
+
+The formula for the model is as follows:
+
+$$\text{GDP} = -135494.8 + 89.33*\text{Internet} + 1.88*\text{Electricity} + 1412.46*\text{LifeExpectancy} - 2.37*\text{Energy} - 42.88*\text{Rural} + 1191.74*\text{ElderlyPop} + 1205.93*\text{BirthRate} + 1495.62*\text{CO2}$$
+The $R^2$ for this model can also be measured. 
+
+```{r, warning = FALSE}
+summary(lm(GDP ~ Internet + Electricity + LifeExpectancy + Energy + Rural + ElderlyPop + BirthRate + CO2, data = countries))$r.squared
+```
+
+Although the model has a much stronger $R^2$ value than any individual variable, the model can raise some questions. The first thing that my mind goes to is that `Energy` and `Rural` have a negative contribution to the `GDP`. If this model were to be true, then that would indicate that energy consumption and the percentage of rural area harm the well-being of an economy. If we examine the factors individually plotted against `GDP`, we might be able to see a better picture. 
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(countries, aes(Energy, GDP)) + geom_point() + 
+  geom_smooth(aes(Energy, GDP), method = "lm", se = FALSE)
+
+ggplot(countries, aes(Rural, GDP)) + geom_point() + 
+  geom_smooth(aes(Rural, GDP), method = "lm", se = FALSE)
+```
+
+We can see that `Rural` having a negative coefficient does make sense as the linear trend has a negative slope when plotting it against `GDP`. But for `Energy`, it raises more questions than answers as a relatively strong $R^2$ value has a negative contribution to `GDP` in the constructed model when it has a positive linear trend line when plotted solely against `GDP`. 
+
+Coincidentally, both variables have a p-value that is not significant at the 0.05 significance level, which means that there is a certain degree of uncertainty in these values. If we take this into account, we can reconstruct the model without insignificant variables, which also means the exclusion of `Internet`. 
+
+```{r}
+summary(lm(GDP ~ Electricity + LifeExpectancy + ElderlyPop + BirthRate + CO2, data = countries))$coefficients
+```
+
+The $R^2$ for this new model can be measured. 
+
+```{r, warning = FALSE}
+summary(lm(GDP ~ Electricity + LifeExpectancy + ElderlyPop + BirthRate + CO2, data = countries))$r.squared
+```
+
+It appears that the $R^2$ value seems to have barely taken a dent, meaning that our newly constructed model is still about as strong with the previous model, but we successfully removed some of the more obvious logical inconsistencies with our model. 
+
+There are still questions that can be raised about this model, but most of them can be dismissed with a bit of reasoning. For example, the abnormally large and negative intercept value seems to be out of place. The magnitude could be attributed to the large values that are contained in the individual variables (which will be discussed next), but the aim of this report is not to create an accurate model that predicts the GDP of some country. The goal is a broader one to simply identify some factors that majorly contribute to a country's economic well-being. Therefore, I don't think it is as productive to resolve this abnormality. 
+
+Another question that might be raised is the small coefficient on `Electricity` compared to the other coefficient values when it has one of the highest measured $R^2$ values. But this can be attributed to the range that these variables have stored. Variables such as `ElderlyPop` and `LifeExpectancy` will have a reasonable ceiling of about 100. However, `Electricity` have a ceiling of over 40000 in our data with a considerable amount of points past 5000 if we consult previously constructed plots. To offset this imbalance of inputted data, a coefficient with a lower magnitude makes sense in this model. 
+
+### Final Model
+
+The formula for the final model is as follows:
+
+$$\text{GDP} = -153854.7 +  1.32*\text{Electricity} + 1693.30*\text{LifeExpectancy} + 1279.75*\text{ElderlyPop} + 1197.75*\text{BirthRate} + 976.38*\text{CO2}$$
+
+In this model, we see that `Electricity`, `LifeExpectancy`, `ElderlyPop`, `BirthRate`, and `CO2` are the most prominent indicators (in this data set) of the well-being of a country's economy in order of $R^2$ values . All five variables have a positive influence on the `GDP`, which means that more of that value will indicate a stronger `GDP`. 
+
+It might be important to mention that regression was probably our best tool for this report as the aim was to analyze trends. Prediction intervals wouldn't have been as useful since it sacrifices precision for accuracy. We could have used confidence intervals to gauge whether our regressions are adequate, but the use of the $R^2$ value seemed to be more convenient. 
+
+### Conclusion
+
+It might be interesting to note that of the five picked variables to represent `GDP`, three of them had something to do with the age of the population (`LifeExpectancy`, `ElderlyPop`, and `BirthRate`) and the other two had something to do with energy consumption (`Electricity` and `CO2`). However, variables like `Population` and `Energy` were surprisingly not included in the model. 
+
+This leads to one of the many problems with looking at the economy in such a simplified lens. Most likely, all the variables in this data set will impact the economy in some facet. Variables such as `Health` and `Hunger` showed sizable $R^2$ values and is undoubtedly major factors to the economy, but including most or every variable in the data set defeats the purpose of spotting a few major factors that contribute to the well-being of an economy. 
+
+Another problem that was discussed in an earlier section is that there is an inconsistency with data collection in this data set. Some values were collected in the form of percentages, some values were collected in the form of "per capita" or average, and some were simply a raw output that wasn't adjusted in any way. Such obstacle prevents the final model from having coefficients of similar magnitudes. 
+
+To reiterate (for the billionth time at this point), the goal of this report was to look at the economy more empirically than theoretically like it sometimes so often is. We found that the age of the population and energy consumption are among impressive indicators of the country's economic well-being. So if a conclusion must be made in regards to how to improve the economy of a country, a government should focus on finding ways to improve the average life expectancy and ways to utilize energy. 
